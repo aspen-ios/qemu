@@ -1,0 +1,9 @@
+name: Discord
+
+on: [push, workflow_dispatch]
+
+jobs:
+  notify:
+    uses: aspen-ios/.github/.github/workflows/notify.yml@main
+    secrets:
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
