@@ -1,0 +1,50 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential ninja-build pkg-config git \
+            python3-venv python3-pip python3-setuptools python3-wheel \
+            libglib2.0-dev libpixman-1-dev zlib1g-dev libslirp-dev libfdt-dev
+
+      - name: Configure
+        run: |
+          ./configure \
+            --target-list=aarch64-softmmu \
+            --enable-vnc \
+            --enable-slirp \
+            --disable-docs \
+            --disable-werror
+
+      - name: Build
+        run: make -C build -j"$(nproc)"
+
+      - name: Verify VNC listener
+        run: |
+          ./build/qemu-system-aarch64 \
+            -M none \
+            -vnc 127.0.0.1:1 \
+            -qmp tcp:127.0.0.1:4444,server,nowait &
+          pid=$!
+          sleep 3
+          kill -0 "$pid"
+          ss -ltn | grep -q '127.0.0.1:5901'
+          kill "$pid"
+          wait "$pid" || true
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-system-aarch64-vnc
+          path: build/qemu-system-aarch64
